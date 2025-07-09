@@ -14,7 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      missions: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          date: string
+          id: string
+          mission_name: string
+          streak_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string | null
+          date: string
+          id?: string
+          mission_name: string
+          streak_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string | null
+          date?: string
+          id?: string
+          mission_name?: string
+          streak_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      monthly_analytics: {
+        Row: {
+          completed_missions: number | null
+          completion_rate: number | null
+          created_at: string | null
+          id: string
+          month: number
+          total_missions: number | null
+          year: number
+        }
+        Insert: {
+          completed_missions?: number | null
+          completion_rate?: number | null
+          created_at?: string | null
+          id?: string
+          month: number
+          total_missions?: number | null
+          year: number
+        }
+        Update: {
+          completed_missions?: number | null
+          completion_rate?: number | null
+          created_at?: string | null
+          id?: string
+          month?: number
+          total_missions?: number | null
+          year?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,14 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { Check, Calendar, Target, Zap, Coffee, Book, Dumbbell, Droplets, Moon, Sun, Heart, Lightbulb, TrendingUp, Settings } from 'lucide-react';
+import { Calendar, Target, Sun, Droplets, Lightbulb, Moon, Heart, Dumbbell, Book, Zap, Coffee, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 
-const Dashboard = () => {
+const PublicProgressViewer = ({ encryptedDate }) => {
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [missions, setMissions] = useState([
     { id: 1, title: 'Wake by 6 AM', icon: Sun, completed: false, streak: 0 },
     { id: 2, title: 'Drink 3L of Water', icon: Droplets, completed: false, streak: 0 },
@@ -25,14 +27,6 @@ const Dashboard = () => {
   ]);
 
   const [completedCount, setCompletedCount] = useState(0);
-  const [currentDate, setCurrentDate] = useState(new Date().toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  }));
-
-  const navigate = useNavigate();
 
   const motivationalQuotes = [
     "Discipline is the bridge between goals and accomplishment.",
@@ -45,22 +39,37 @@ const Dashboard = () => {
   const [currentQuote, setCurrentQuote] = useState(motivationalQuotes[0]);
 
   useEffect(() => {
-    loadTodaysProgress();
-    setCompletedCount(missions.filter(mission => mission.completed).length);
-  }, [missions]);
+    // Decrypt the date from URL
+    if (encryptedDate) {
+      try {
+        const decryptedDate = atob(encryptedDate);
+        setSelectedDate(new Date(decryptedDate));
+      } catch (error) {
+        console.error('Invalid encrypted date');
+      }
+    }
+  }, [encryptedDate]);
 
   useEffect(() => {
     const quoteIndex = Math.floor(Math.random() * motivationalQuotes.length);
     setCurrentQuote(motivationalQuotes[quoteIndex]);
-  }, []);
+  }, [selectedDate]);
 
-  const loadTodaysProgress = async () => {
+  useEffect(() => {
+    loadProgressForDate(selectedDate);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    setCompletedCount(missions.filter(mission => mission.completed).length);
+  }, [missions]);
+
+  const loadProgressForDate = async (date) => {
     try {
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const dateStr = format(date, 'yyyy-MM-dd');
       const { data, error } = await supabase
         .from('missions')
         .select('*')
-        .eq('date', today);
+        .eq('date', dateStr);
 
       if (error) throw error;
 
@@ -75,7 +84,7 @@ const Dashboard = () => {
 
       setMissions(updatedMissions);
     } catch (error) {
-      console.error('Error loading today\'s progress:', error);
+      console.error('Error loading progress:', error);
     }
   };
 
@@ -94,30 +103,35 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background p-4 md:p-6">
       <div className="max-w-6xl mx-auto space-y-8">
         
-        {/* Header Section */}
+        {/* Header Section with Calendar Picker */}
         <div className="text-center space-y-4 slide-up">
-          <div className="flex items-center justify-end mb-4">
-            <Button 
-              onClick={() => navigate('/admin')} 
-              variant="outline" 
-              className="gap-2"
-            >
-              <Settings className="h-4 w-4" />
-              Admin Panel
-            </Button>
+          <div className="flex items-center justify-center mb-4">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Calendar className="h-4 w-4" />
+                  {format(selectedDate, 'MMM dd, yyyy')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="center">
+                <CalendarComponent
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="flex items-center justify-center gap-3 mb-2">
             <Target className="h-8 w-8 text-primary" />
             <h1 className="text-4xl md:text-5xl font-bold gradient-text">
-              Daily Mission Compass
+              Daily Mission Progress
             </h1>
           </div>
           <p className="text-muted-foreground text-lg">
             Building discipline through structured daily habits
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {currentDate}
           </p>
           <div className="flex items-center justify-center gap-2 text-sm">
             <span className="text-muted-foreground">By</span>
@@ -131,7 +145,7 @@ const Dashboard = () => {
         <Card className="p-6 slide-up" style={{ animationDelay: '0.1s' }}>
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="text-center md:text-left">
-              <h2 className="text-2xl font-semibold mb-2">Today's Progress</h2>
+              <h2 className="text-2xl font-semibold mb-2">Progress for {format(selectedDate, 'MMMM dd, yyyy')}</h2>
               <p className="text-muted-foreground mb-4">
                 "{currentQuote}"
               </p>
@@ -155,7 +169,7 @@ const Dashboard = () => {
           </div>
         </Card>
 
-        {/* Missions Grid - Read Only for Public View */}
+        {/* Missions Grid - Read Only */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {missions.map((mission, index) => {
             const IconComponent = mission.icon;
@@ -173,8 +187,8 @@ const Dashboard = () => {
                       {mission.streak} streak
                     </Badge>
                     {mission.completed && (
-                      <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center check-bounce">
-                        <Check className="h-4 w-4 text-white" />
+                      <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                        <Target className="h-4 w-4 text-white" />
                       </div>
                     )}
                   </div>
@@ -186,7 +200,7 @@ const Dashboard = () => {
                 
                 <div className="flex items-center justify-between">
                   <span className={`text-sm ${mission.completed ? 'text-primary/80' : 'text-muted-foreground'}`}>
-                    {mission.completed ? 'Completed ✓' : 'Pending'}
+                    {mission.completed ? 'Completed ✓' : 'Not Completed'}
                   </span>
                 </div>
               </Card>
@@ -205,4 +219,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default PublicProgressViewer;
